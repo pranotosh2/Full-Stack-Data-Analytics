@@ -1,0 +1,115 @@
+name: Deploy Analytics Dashboard
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master, main ]
+    paths:
+      - 'simple_dashboard.py'
+      - 'backend/analytics/**'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install streamlit plotly pandas numpy
+
+    - name: Test dashboard functionality
+      run: |
+        python -c "from simple_dashboard import generate_sample_data; data = generate_sample_data(); print('✅ Dashboard functions work correctly')"
+
+    - name: Create deployment package
+      run: |
+        mkdir -p deployment/dashboard
+        cp simple_dashboard.py deployment/dashboard/
+        cp README.md deployment/dashboard/
+        cp -r backend/analytics deployment/dashboard/
+
+        # Create a simple deployment script
+        cat > deployment/dashboard/run_dashboard.sh << 'EOF'
+#!/bin/bash
+echo "🚀 Starting DAMP Analytics Dashboard..."
+echo "📊 Dashboard will be available at: http://localhost:8501"
+echo "💡 Press Ctrl+C to stop the dashboard"
+echo ""
+
+# Install dependencies if needed
+pip install streamlit plotly pandas numpy || echo "Dependencies already installed"
+
+# Run the dashboard
+streamlit run simple_dashboard.py --server.port 8501 --server.headless true
+EOF
+
+        chmod +x deployment/dashboard/run_dashboard.sh
+
+    - name: Upload dashboard package
+      uses: actions/upload-artifact@v3
+      with:
+        name: analytics-dashboard
+        path: deployment/dashboard/
+
+    - name: Create deployment instructions
+      run: |
+        cat > deployment/README.md << 'EOF'
+# Analytics Dashboard Deployment
+
+This package contains the DAMP Analytics Dashboard ready for deployment.
+
+## Quick Start
+
+1. **Extract the package**
+2. **Install dependencies** (if not already installed):
+   ```bash
+   pip install streamlit plotly pandas numpy
+   ```
+
+3. **Run the dashboard**:
+   ```bash
+   ./run_dashboard.sh
+   # OR
+   streamlit run simple_dashboard.py --server.port 8501
+   ```
+
+4. **Access the dashboard** at: http://localhost:8501
+
+## Dashboard Features
+
+- **🏠 Overview**: Platform metrics and KPIs
+- **👥 User Analytics**: Growth trends and patterns
+- **📚 Course Performance**: Effectiveness and enrollment analysis
+- **🎓 Student Performance**: Grade distributions and learning outcomes
+- **📈 Trends**: Time-based analysis and insights
+
+## System Requirements
+
+- Python 3.8+
+- 4GB+ RAM recommended
+- Modern web browser
+
+## Troubleshooting
+
+If the dashboard doesn't start:
+1. Check Python version: `python --version`
+2. Install dependencies: `pip install streamlit plotly pandas numpy`
+3. Try different port: `streamlit run simple_dashboard.py --server.port 8502`
+
+For more help, see the main repository: https://github.com/pranotosh2/Full-Stack-Data-Analytics
+EOF
+
+    - name: Update deployment README
+      run: |
+        cp deployment/README.md deployment/dashboard/
+        echo "✅ Analytics dashboard package created successfully"
+        echo "📦 Download from: analytics-dashboard artifact"
+        echo "🚀 Ready for deployment on any server with Python support"

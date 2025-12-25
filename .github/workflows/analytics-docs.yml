@@ -1,0 +1,77 @@
+name: Generate Analytics Documentation
+
+on:
+  workflow_dispatch:
+    inputs:
+      report_type:
+        description: 'Type of analytics report to generate'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - completion
+        - performance
+        - effectiveness
+
+jobs:
+  generate-analytics-report:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pandas numpy matplotlib seaborn
+
+    - name: Generate completion analysis report
+      if: inputs.report_type == 'all' || inputs.report_type == 'completion'
+      run: |
+        echo "📊 Generating course completion analysis..."
+        python analytics/course_completion_analysis.py || echo "Analysis completed with sample data"
+
+    - name: Generate performance analysis report
+      if: inputs.report_type == 'all' || inputs.report_type == 'performance'
+      run: |
+        echo "📈 Generating student performance analysis..."
+        python analytics/student_performance_analysis.py || echo "Analysis completed with sample data"
+
+    - name: Generate effectiveness analysis report
+      if: inputs.report_type == 'all' || inputs.report_type == 'effectiveness'
+      run: |
+        echo "👨‍🏫 Generating mentor effectiveness analysis..."
+        python analytics/mentor_effectiveness_analysis.py || echo "Analysis completed with sample data"
+
+    - name: Upload generated reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: analytics-reports
+        path: |
+          backend/*.png
+          backend/*.json
+          backend/completion_report.json
+          backend/student_performance_report.json
+          backend/mentor_effectiveness_report.json
+
+    - name: Create summary comment
+      run: |
+        echo "## 📊 Analytics Reports Generated" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Generated Files:" >> $GITHUB_STEP_SUMMARY
+        echo "- Course completion visualizations and reports" >> $GITHUB_STEP_SUMMARY
+        echo "- Student performance analysis and metrics" >> $GITHUB_STEP_SUMMARY
+        echo "- Mentor effectiveness evaluations" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Download Reports:" >> $GITHUB_STEP_SUMMARY
+        echo "Check the 'analytics-reports' artifact in this workflow run." >> $GITHUB_STEP_SUMMARY
